@@ -40,6 +40,7 @@ bool IsSupportGuaranteedVulkan_1_0(uint32_t capability) {
     case SpvCapabilityImageBuffer:
     case SpvCapabilityImageQuery:
     case SpvCapabilityDerivativeControl:
+    case SpvCapabilityLinkage:
       return true;
   }
   return false;

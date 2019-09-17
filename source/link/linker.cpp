@@ -33,6 +33,7 @@
 #include "source/opt/ir_loader.h"
 #include "source/opt/pass_manager.h"
 #include "source/opt/remove_duplicates_pass.h"
+#include "source/opt/strip_debug_info_pass.h"
 #include "source/opt/type_manager.h"
 #include "source/spirv_target_env.h"
 #include "source/util/make_unique.h"
@@ -539,6 +540,7 @@ spv_result_t RemoveLinkageSpecificInstructions(
   for (const auto& linking_entry : linkings_to_do) {
     for (const auto parameter_id :
          linking_entry.imported_symbol.parameter_ids) {
+      linked_context->KillNamesAndDecorates(parameter_id);
       decoration_manager->RemoveDecorationsFrom(
           parameter_id, [](const Instruction& inst) {
             return (inst.opcode() == SpvOpDecorate ||
@@ -548,7 +550,7 @@ spv_result_t RemoveLinkageSpecificInstructions(
           });
     }
   }
-
+  
   // Remove prototypes of imported functions
   for (const auto& linking_entry : linkings_to_do) {
     for (auto func_iter = linked_context->module()->begin();
@@ -559,7 +561,7 @@ spv_result_t RemoveLinkageSpecificInstructions(
         ++func_iter;
     }
   }
-
+  
   // Remove declarations of imported variables
   for (const auto& linking_entry : linkings_to_do) {
     auto next = linked_context->types_values_begin();

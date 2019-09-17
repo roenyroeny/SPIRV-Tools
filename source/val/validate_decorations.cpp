@@ -635,12 +635,14 @@ spv_result_t CheckLinkageAttrOfFunctions(ValidationState_t& vstate) {
                   "Linkage type.";
       }
     } else {
+		/* disabled as functions without bodies currently arent supported.
       if (hasImportLinkageAttribute(function.id(), vstate)) {
         return vstate.diag(SPV_ERROR_INVALID_BINARY,
                            vstate.FindDef(function.id()))
                << "Function definition (id " << function.id()
                << ") may not be decorated with Import Linkage type.";
       }
+	  */
     }
   }
   return SPV_SUCCESS;

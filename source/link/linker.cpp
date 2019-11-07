@@ -387,11 +387,14 @@ spv_result_t GetImportExportPairs(const MessageConsumer& consumer,
 
   std::vector<LinkageSymbolInfo> imports;
   std::unordered_map<std::string, std::vector<LinkageSymbolInfo>> exports;
+  std::unordered_map<SpvBuiltIn, std::vector<LinkageSymbolInfo>> builtins;
 
   // Figure out the imports and exports
   for (const auto& decoration : linked_context.annotations()) {
     if (decoration.opcode() != SpvOpDecorate ||
-        decoration.GetSingleWordInOperand(1u) != SpvDecorationLinkageAttributes)
+        (decoration.GetSingleWordInOperand(1u) !=
+             SpvDecorationLinkageAttributes &&
+         decoration.GetSingleWordInOperand(1u) != SpvDecorationBuiltIn))
       continue;
 
     const SpvId id = decoration.GetSingleWordInOperand(0u);
@@ -404,26 +407,29 @@ spv_result_t GetImportExportPairs(const MessageConsumer& consumer,
         break;
       }
     }
+
+	LinkageSymbolInfo symbol_info;
+	symbol_info.name =
+		reinterpret_cast<const char*>(decoration.GetInOperand(2u).words.data());
+	symbol_info.id = id;
+	symbol_info.type_id = 0u;
+
+	// Retrieve the type of the current symbol. This information will be used
+	// when checking that the imported and exported symbols have the same
+	// types.
+	const Instruction* def_inst = def_use_manager.GetDef(id);
+	if (def_inst == nullptr)
+		return DiagnosticStream(position, consumer, "", SPV_ERROR_INVALID_BINARY)
+		<< "ID " << id << " is never defined:\n";
+
     if (is_built_in) {
+          symbol_info.type_id = def_inst->type_id();
+      const uint32_t type = decoration.GetSingleWordInOperand(2u);     
+      builtins[(SpvBuiltIn)type].push_back(symbol_info);      
       continue;
     }
 
     const uint32_t type = decoration.GetSingleWordInOperand(3u);
-
-    LinkageSymbolInfo symbol_info;
-    symbol_info.name =
-        reinterpret_cast<const char*>(decoration.GetInOperand(2u).words.data());
-    symbol_info.id = id;
-    symbol_info.type_id = 0u;
-
-    // Retrieve the type of the current symbol. This information will be used
-    // when checking that the imported and exported symbols have the same
-    // types.
-    const Instruction* def_inst = def_use_manager.GetDef(id);
-    if (def_inst == nullptr)
-      return DiagnosticStream(position, consumer, "", SPV_ERROR_INVALID_BINARY)
-             << "ID " << id << " is never defined:\n";
-
     if (def_inst->opcode() == SpvOpVariable) {
       symbol_info.type_id = def_inst->type_id();
     } else if (def_inst->opcode() == SpvOpFunction) {
@@ -448,6 +454,12 @@ spv_result_t GetImportExportPairs(const MessageConsumer& consumer,
       imports.push_back(symbol_info);
     else if (type == SpvLinkageTypeExport)
       exports[symbol_info.name].push_back(symbol_info);
+  }
+
+  for (const auto& builtin : builtins) {
+    for (int i = 1; i < builtin.second.size(); i++) {
+      linkings_to_do->emplace_back(builtin.second[i], builtin.second[0]);
+    }
   }
 
   // Find the import/export pairs

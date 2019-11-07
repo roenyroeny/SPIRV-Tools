@@ -387,7 +387,7 @@ spv_result_t GetImportExportPairs(const MessageConsumer& consumer,
 
   std::vector<LinkageSymbolInfo> imports;
   std::unordered_map<std::string, std::vector<LinkageSymbolInfo>> exports;
-  std::unordered_map<SpvBuiltIn, std::vector<LinkageSymbolInfo>> builtins;
+  std::map<SpvBuiltIn, std::vector<LinkageSymbolInfo>> builtins;
 
   // Figure out the imports and exports
   for (const auto& decoration : linked_context.annotations()) {
